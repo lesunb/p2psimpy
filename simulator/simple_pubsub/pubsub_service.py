@@ -77,8 +77,8 @@ class PS_Service(entity.Entity):
         self._attach_data_object_to_topic(data_object)
         self._send_local_modification('NEW_DATA', data_object)
 
-    def announce_new_publisher(self, new_publisher):
-        self._send_local_modification('NEW_PUBLISHER', new_publisher)
+    def announce_new_subscriber(self, new_subscriver):
+        self._send_local_modification('NEW_SUBSCRIBER', new_subscriber)
 
     def topic_exists(self, topic_name):
         return topic_name in self.topics
@@ -102,6 +102,7 @@ class PS_Service(entity.Entity):
         self.message_handlers['NEW_DATA'] = self._append_data_object
         self.message_handlers['SEND_ALL_DATA'] = self._send_full_domain_data
         self.message_handlers['ALL_DATA'] = self._receive_full_domain_data
+        self.message_handlers['NEW_SUBSCRIBER'] = self._notify_publishers_of_new_subscriber
 
     def _append_remote_participant(self, r_participant):
         handle = r_participant.get_instance_handle()
@@ -133,9 +134,9 @@ class PS_Service(entity.Entity):
         self._attach_data_object_to_topic(new_data)
 
     # TODO: Ainda falta completar.
-    def _notify_subscribers_of_new_publisher(self, new_publisher):
-        for subscriber in self.participants.subscribers.values():
-            topic_name = new_publisher.get_topic().get_name()
+    def _notify_publishers_of_new_subscriber(self, new_subscriber):
+        for publisher in self.participants.publishers.values():
+            topic_name = new_subscriber.get_topic().get_name()
         pass
 
     def _send_data_object_to_all_participants(self, data_object):
@@ -155,9 +156,11 @@ class PS_Service(entity.Entity):
         for topic in self.topics.values():
             packet = ('NEW_TOPIC', topic)
             local_data.append(packet)
-        for data_object in self.data_objects.values():
-            packet = ('NEW_DATA', data_object)
-            local_data.append(packet)
+        # No momento, não queremos enviar todos os dados para todos os nodos.
+        #
+        # for data_object in self.data_objects.values():
+        #     packet = ('NEW_DATA', data_object)
+        #     local_data.append(packet)
         msg = ('ALL_DATA', local_data)
         self.driver.async_function_call(['send', to_address, msg])
     
@@ -185,7 +188,7 @@ class PS_Service(entity.Entity):
         self.driver.register_handler(self._receive_incoming_data, 'on_message')
 
     def _receive_incoming_data(self, msg):
-        logging.info(str(self.driver.get_time()) + ' :: ' + f'Data received by PSS Service, handle {str(self.instance_handle)}')
+        logging.info(str(self.driver.get_time()) + ' :: ' + f'Data received by PS Service, handle {str(self.instance_handle)}')
         for z in self._unpack_data(msg):
             yield z
 

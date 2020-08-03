@@ -7,6 +7,7 @@ class Publisher(entity.Entity):
         super(Publisher, self).__init__()
         self.participant = participant
         self.topic = topic
+        self.subscriptions = 0
 
     def get_topic(self):
         return self.topic

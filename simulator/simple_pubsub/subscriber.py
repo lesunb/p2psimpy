@@ -20,8 +20,8 @@ class Subscriber(entity.Entity):
     def receive_data(self, data_object):
         if data_object.get_topic_name() == self.topic.get_name():
             self.available_data.put(data_object)
-        if self.listener != None:
-            self.listener(self)
+            if self.listener != None:
+                self.listener(self)
 
     def read(self):
         try:
