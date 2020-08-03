@@ -1,5 +1,4 @@
 import logging
-from simple_dds import *
 
 """
 Simulates the behavior of a peer in a network.
@@ -45,6 +44,3 @@ class Peer:
 
     def read_new_message(self, subscriber):
         self.latest_read_msg = subscriber.read()
-        
-
-        

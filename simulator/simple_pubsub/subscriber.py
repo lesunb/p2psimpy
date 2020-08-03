@@ -1,7 +1,7 @@
 import logging
 from queue import *
 
-from simple_dds import entity
+from simple_pubsub import entity
 
 class Subscriber(entity.Entity):
 

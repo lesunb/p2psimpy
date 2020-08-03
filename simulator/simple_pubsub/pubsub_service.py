@@ -1,11 +1,11 @@
 # TODO
-# - Não pedir todos os objetos-dado na criação do DDS Service; Fazer isso na..
+# - Não pedir todos os objetos-dado na criação do PS Service; Fazer isso na..
 #   .. criação de subscriber, e somente dados do tópico específico.
 
 import logging
 from threading import Lock
 from singleton import Singleton
-from simple_dds import entity
+from simple_pubsub import entity
 
 class UniqueHandleController(metaclass=Singleton):
 
@@ -20,7 +20,7 @@ class UniqueHandleController(metaclass=Singleton):
             self.next_available_handle += 1
         return handle
 
-class DDS_Service(entity.Entity):
+class PS_Service(entity.Entity):
 
     def __init__(self, driver):
         self.handle_controller = UniqueHandleController()
@@ -40,7 +40,7 @@ class DDS_Service(entity.Entity):
         self._request_full_domain_data()
 
     def set_instance_handle(self, handle):
-        raise RuntimeError("DDS Service's handle cannot be changed.")
+        raise RuntimeError("PS Service's handle cannot be changed.")
 
     def get_instance_handle(self):
         return self.instance_handle
@@ -177,7 +177,7 @@ class DDS_Service(entity.Entity):
         # .. uma string descrevendo o pedido, o segundo elemento os dados em si
         if data[0] not in self.message_handlers:
             pass
-            #logging.warning(str(self.driver.get_time()) + ' :: ' + f'DDS Service (Handle {str(self.instance_handle)}): Invalid request: {str(data[1])}')
+            #logging.warning(str(self.driver.get_time()) + ' :: ' + f'PSS Service (Handle {str(self.instance_handle)}): Invalid request: {str(data[1])}')
         else:
             self.message_handlers[data[0]](data[1])
 
@@ -185,7 +185,7 @@ class DDS_Service(entity.Entity):
         self.driver.register_handler(self._receive_incoming_data, 'on_message')
 
     def _receive_incoming_data(self, msg):
-        logging.info(str(self.driver.get_time()) + ' :: ' + f'Data received by DDS Service, handle {str(self.instance_handle)}')
+        logging.info(str(self.driver.get_time()) + ' :: ' + f'Data received by PSS Service, handle {str(self.instance_handle)}')
         for z in self._unpack_data(msg):
             yield z
 

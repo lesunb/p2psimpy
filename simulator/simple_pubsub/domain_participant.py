@@ -1,13 +1,13 @@
-from simple_dds import entity
-from simple_dds import topic
-from simple_dds import publisher
-from simple_dds import subscriber
+from simple_pubsub import entity
+from simple_pubsub import topic
+from simple_pubsub import publisher
+from simple_pubsub import subscriber
 
 class Domain_Participant(entity.Entity):
 
-    def __init__(self, dds_service):
+    def __init__(self, ps_service):
         super(Domain_Participant, self).__init__()
-        self.service = dds_service
+        self.service = ps_service
         self.publishers = {}
         self.subscribers = {}
         self.topics = {}

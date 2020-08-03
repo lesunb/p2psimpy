@@ -1,4 +1,4 @@
-from simple_dds import entity
+from simple_pubsub import entity
 
 class Topic(entity.Entity):
 

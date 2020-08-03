@@ -9,7 +9,7 @@ from network import Network
 from processor import Processor
 from driver import Driver
 from peer import Peer
-from simple_dds import *
+from simple_pubsub import *
 
 @pytest.fixture
 def environment_and_network():
@@ -85,7 +85,7 @@ def add_process_to_simulation(environment, method):
 
 def set_up_subscription(peer, topic_name, message, wait_time=100):
     yield peer.driver.env.timeout(wait_time)
-    the_service = dds_service.DDS_Service(peer.driver)
+    the_service = pubsub_service.PS_Service(peer.driver)
     participant = domain_participant.Domain_Participant(the_service)
     topic = participant.create_topic(topic_name)
     # read_new_message é o método 'listener'
@@ -95,7 +95,7 @@ def set_up_subscription(peer, topic_name, message, wait_time=100):
 # .. necessários. É preciso mudar depois.
 def wait_then_publish_message(peer, topic_name, message, wait_time=100):
     yield peer.driver.env.timeout(wait_time)
-    the_service = dds_service.DDS_Service(peer.driver)
+    the_service = pubsub_service.PS_Service(peer.driver)
     participant = domain_participant.Domain_Participant(the_service)
     topic = participant.create_topic(topic_name)
     pub = participant.create_publisher(topic)
@@ -103,7 +103,7 @@ def wait_then_publish_message(peer, topic_name, message, wait_time=100):
 
 def wait_then_read_message(peer, topic_name, message, wait_time=100):
     yield peer.driver.env.timeout(wait_time)
-    the_service = dds_service.DDS_Service(peer.driver)
+    the_service = pubsub_service.PS_Service(peer.driver)
     participant = domain_participant.Domain_Participant(the_service)
     topic = participant.create_topic(topic_name)
     sub = participant.create_subscriber(topic)

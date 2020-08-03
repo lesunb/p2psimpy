@@ -1,5 +1,5 @@
-from simple_dds import entity
-from simple_dds import data_object
+from simple_pubsub import entity
+from simple_pubsub import data_object
 
 class Publisher(entity.Entity):
 
