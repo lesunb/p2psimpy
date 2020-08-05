@@ -24,6 +24,16 @@ def subscriber_number():
     # Set Number:
     return 15
 
+class MsgStoringApp:
+
+    def __init__(self, peer):
+        self.peer = peer
+        self.latest_read_msg = None
+
+    # Store message
+    def callback(self, subscriber):
+        self.latest_read_msg = subscriber.read()
+
 def test_simple_publication_two_peers(environment_and_network):
     env, net = environment_and_network
     proc_latency = 3
@@ -31,29 +41,32 @@ def test_simple_publication_two_peers(environment_and_network):
     message = random.randrange(1000)
     topic_name = random.randrange(1000)
     wait_before_publication = 100
-    wait_before_reading = 150
+    wait_before_subscription = 50
     simulation_time = 300
     container = None
 
     publishing_peer = initialize_peer(env, net, 0, 0, proc_latency)
     subscribing_peer = initialize_peer(env, net, 1, 1, proc_latency)
+    app = MsgStoringApp(subscribing_peer)
     publication = wait_then_publish_message(publishing_peer, topic_name, message, wait_before_publication)
-    reading = wait_then_read_message(subscribing_peer, topic_name, message, wait_before_reading)
+    reading = set_up_subscription(app, topic_name, wait_before_subscription)
     add_process_to_simulation(env, publication)
     add_process_to_simulation(env, reading)
     env.run(until=simulation_time)
-    container = str(subscribing_peer.latest_read_msg)
+    container = str(app.latest_read_msg)
     assert container == str(message)
 
+# TODO: Elaborar uma fórmula para determinar automaticamente tempos de espera e de simulação, levando...
+# .. em consideração os tempos de latência dados.
 def test_simple_publication_to_multiple_peers(environment_and_network, subscriber_number):
     env, net = environment_and_network
     proc_latency = 3
     random.seed()
     message = 'test message'
     topic_name = 'test topic'
-    wait_before_publication = 100
-    wait_before_reading = 1000
-    simulation_time = 900000
+    wait_before_publication = 500
+    wait_before_subscription = 50
+    simulation_time = 3000
     subscriber_id = 1
     subscribers = []
     received_msg = None
@@ -62,16 +75,20 @@ def test_simple_publication_to_multiple_peers(environment_and_network, subscribe
     publication = wait_then_publish_message(publishing_peer, topic_name, message, wait_before_publication)
     add_process_to_simulation(env, publication)
     for i in range(subscriber_number):
-        subscriber = initialize_peer(env, net, 0, i, proc_latency)
-        reading = set_up_subscription(subscriber, topic_name, message, wait_before_reading)
+        subscribing_peer = initialize_peer(env, net, 0, i, proc_latency)
+        sub_app = MsgStoringApp(subscribing_peer)
+        reading = set_up_subscription(sub_app, topic_name, wait_before_subscription)
         add_process_to_simulation(env, reading)
-        subscribers.append(subscriber)
+        subscribers.append(sub_app)
 
     env.run(until=simulation_time)
     for i, subscriber in enumerate(subscribers):
         print(i)
         received_msg = str(subscriber.latest_read_msg)
         assert received_msg == str(message)
+
+# TODO: Adicionar teste mostrando que subscribers não recebem mensagens de tópicos que não
+# sejam os seus.
 
 def initialize_peer(environment, network, proc_id, peer_id, proc_latency):
     proc = Processor(environment, proc_id, proc_latency)
@@ -83,13 +100,12 @@ def initialize_peer(environment, network, proc_id, peer_id, proc_latency):
 def add_process_to_simulation(environment, method):
     environment.process(method)
 
-def set_up_subscription(peer, topic_name, message, wait_time=100):
-    yield peer.driver.env.timeout(wait_time)
-    the_service = pubsub_service.PS_Service(peer.driver)
+def set_up_subscription(application, topic_name, wait_time=100):
+    yield application.peer.driver.env.timeout(wait_time)
+    the_service = pubsub_service.PS_Service(application.peer.driver)
     participant = domain_participant.Domain_Participant(the_service)
     topic = participant.create_topic(topic_name)
-    # read_new_message é o método 'listener'
-    sub = participant.create_subscriber(topic, peer.read_new_message)
+    sub = participant.create_subscriber(topic, application.callback)
 
 # TODO: O nome não é adequado: faz mais do que publicar mensagem, antes cria objetos..
 # .. necessários. É preciso mudar depois.
@@ -100,6 +116,16 @@ def wait_then_publish_message(peer, topic_name, message, wait_time=100):
     topic = participant.create_topic(topic_name)
     pub = participant.create_publisher(topic)
     pub.write(message)
+
+def wait_then_publish_message_multiple_times(peer, topic_name, message, wait_time=100, count=100):
+    yield peer.driver.env.timeout(wait_time)
+    the_service = pubsub_service.PS_Service(peer.driver)
+    participant = domain_participant.Domain_Participant(the_service)
+    topic = participant.create_topic(topic_name)
+    pub = participant.create_publisher(topic)
+    for i in range(count):
+        pub.write(message)
+        yield peer.driver.env.timeout(1)
 
 def wait_then_read_message(peer, topic_name, message, wait_time=100):
     yield peer.driver.env.timeout(wait_time)

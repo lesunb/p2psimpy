@@ -35,7 +35,6 @@ class Domain_Participant(entity.Entity):
         self.service.assign_handle(new_publisher)
         handle = new_publisher.get_instance_handle()
         self.publishers[handle] = new_publisher
-        self.service.announce_new_publisher(new_publisher)
         return new_publisher
 
     def delete_publisher(self, publisher):

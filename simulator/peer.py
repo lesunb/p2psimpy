@@ -24,7 +24,6 @@ class Peer:
         self.driver.register_handler(self.on_advertise, 'on_advertise')
         self.driver.register_handler(self.on_disconnect, 'on_disconnect')
         self.name = 'peer_{}'.format(id)
-        self.latest_read_msg = 0
 
     def on_message (self, msg):
         logging.info(str(self.driver.env.now) + ' :: ' + '{} received msg: {}'.format(self.name, msg))
@@ -41,6 +40,3 @@ class Peer:
     def on_advertise (self, msg):
         for z in self.driver.advertise(msg):
             yield z
-
-    def read_new_message(self, subscriber):
-        self.latest_read_msg = subscriber.read()

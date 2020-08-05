@@ -8,7 +8,7 @@ from simple_pubsub import *
 
 def publisher(peer, topic_name, count):
     environment = peer.driver.env
-    yield environment.timeout(50)
+    yield environment.timeout(20) # Espera para que o driver esteja pronto
     service = pubsub_service.PS_Service(peer.driver)
     node = domain_participant.Domain_Participant(service)
     topic = node.create_topic(topic_name)
@@ -19,6 +19,7 @@ def publisher(peer, topic_name, count):
 
 def subscriber(peer, topic_name):
     environment = peer.driver.env
+    yield environment.timeout(100)
     service = pubsub_service.PS_Service(peer.driver)
     node = domain_participant.Domain_Participant(service)
     topic = node.create_topic(topic_name)
@@ -28,9 +29,6 @@ def subscriber(peer, topic_name):
 def sub_callback(subscriber):
     msg = subscriber.read()
     print("Received: " + str(msg))
-
-
-
 
 # Configuração do root logger
 console_handler = logging.StreamHandler()
@@ -71,7 +69,7 @@ peer_1 = peer.Peer(dri_1, 1)
 env.process(dri_1.run())
 env.process(subscriber(peer_1, topic_name))
 
-# Setting up publisher with no subscribers
+# Setting up publisher that'll have no subscribers
 
 proc_2 = processor.Processor(env, 2, 3)
 dri_2 = driver.Driver(net, proc_2)
