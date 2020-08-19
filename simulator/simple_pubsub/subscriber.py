@@ -5,13 +5,11 @@ from simple_pubsub import entity
 
 class Subscriber(entity.Entity):
 
-    def __init__(self, participant, topic, data_objects, listener_method=None):
+    def __init__(self, participant, topic, listener_method=None):
         super(Subscriber, self).__init__()
         self.participant = participant
         self.topic = topic
         self.available_data = Queue()
-        for element in data_objects:
-            self.available_data.put(element)
         self.listener = listener_method
 
     def get_topic(self):

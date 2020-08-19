@@ -18,6 +18,7 @@ class Domain_Participant(entity.Entity):
             logging.warning(f'{topic_name} already exists.')
             return None
         else:
+            current_time = self.service.driver.get_time()
             new_topic = topic.Topic(topic_name, self)
             self.service.add_topic(new_topic)
             self.topics[topic_name] = new_topic
@@ -41,8 +42,9 @@ class Domain_Participant(entity.Entity):
         pass
 
     def create_subscriber(self, topic, listener=None):
-        data = self.service.retrieve_filtered_data_objects(topic.get_name())
-        new_subscriber = subscriber.Subscriber(self, topic, data, listener)
+        #data = self.service.retrieve_filtered_data_objects(topic.get_name())
+        #new_subscriber = subscriber.Subscriber(self, topic, data, listener)
+        new_subscriber = subscriber.Subscriber(self, topic, listener)
         self.service.assign_handle(new_subscriber)
         handle = new_subscriber.get_instance_handle()
         self.subscribers[handle] = new_subscriber

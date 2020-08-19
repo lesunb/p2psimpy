@@ -3,6 +3,7 @@
 #   .. criação de subscriber, e somente dados do tópico específico.
 
 import logging
+import copy
 from threading import Lock
 from singleton import Singleton
 from simple_pubsub import entity
@@ -27,9 +28,8 @@ class PS_Service(entity.Entity):
         self.instance_handle = self.handle_controller.generate_handle()
         self.driver = driver
         self.peer_list = []
-        self.handles = {} # Handle: Entity
-        self.participants = {} # Handle: Participant
-        self.local_participants = {}
+        self.local_participants = {} # Handle: Participant
+        self.remote_participants = {} # Handle: IP
         self.topics = {}  # Topic name: Topic
         self.data_objects = {} # Handle: Data object
         self.message_handlers = {}
@@ -55,14 +55,13 @@ class PS_Service(entity.Entity):
     def assign_handle(self, entity):
         handle = self.handle_controller.generate_handle()
         entity.set_instance_handle(handle)
-        self.handles[handle] = entity
     
     def add_participant(self, participant):
         self.assign_handle(participant)
         handle = participant.get_instance_handle()
-        self.participants[handle] = participant
         self.local_participants[handle] = participant
-        self._send_local_modification('NEW_PARTICIPANT', participant)
+        local_ip = self.driver.address
+        self._send_local_modification('NEW_PARTICIPANT', (handle, local_ip))
 
     def add_topic(self, topic):
         self.assign_handle(topic)
@@ -86,8 +85,8 @@ class PS_Service(entity.Entity):
     def get_topic(self, topic_name):
         if self.topic_exists(topic_name):
             return self.topics[topic_name]
-        else: # Como lidar com isto?
-            pass
+        else:
+            return None
     
     def _erase_topic_from_domain(self, topic):
         # Deleta tópico e todos os dados associados a ele.
@@ -98,38 +97,36 @@ class PS_Service(entity.Entity):
 
     def _add_message_handler_methods(self):
         self.message_handlers['NEW_PARTICIPANT'] = self._append_remote_participant
-        self.message_handlers['NEW_TOPIC'] = self._append_remote_topic
+        # self.message_handlers['NEW_TOPIC'] = self._append_remote_topic
         self.message_handlers['NEW_DATA'] = self._append_data_object
         self.message_handlers['SEND_ALL_DATA'] = self._send_full_domain_data
         self.message_handlers['ALL_DATA'] = self._receive_full_domain_data
         self.message_handlers['NEW_SUBSCRIBER'] = self._notify_publishers_of_new_subscriber
 
-    def _append_remote_participant(self, r_participant):
-        handle = r_participant.get_instance_handle()
-        if handle not in self.participants and handle not in self.handles:
-            self.handles[handle] = r_participant
-            self.participants[handle] = r_participant
+    # Espera uma 2-tupla de handle e IP.
+    def _append_remote_participant(self, r_participant_info):
+        handle = r_participant_info[0]
+        remote_ip = r_participant_info[1]
+        if handle not in self.remote_participants:
+            self.remote_participants[handle] = remote_ip
 
-    def _append_remote_topic(self, r_topic):
-        topic_name = r_topic.get_name()
-        if not self.topic_exists(topic_name):
-            handle = r_topic.get_instance_handle()
-            self.handles[handle] = r_topic
-            self.topics[topic_name] = r_topic
-        else:
-            self._resolve_topic_conflict(r_topic)
+    # def _append_remote_topic(self, r_topic):
+    #     topic_name = r_topic.get_name()
+    #     if not self.topic_exists(topic_name):
+    #         handle = r_topic.get_instance_handle()
+    #         self.topics[topic_name] = r_topic
+    #     else:
+    #         self._resolve_topic_conflict(r_topic)
 
-    def _resolve_topic_conflict(self, topic):
-        # TODO: Completar este método.
-        # O tópico com a instance handle menor tem prioridade.
-        # Caso o serviço local tenha prioridade, é necessário informar os outros nodos.
-        pass
+    # def _resolve_topic_conflict(self, topic):
+    #     # TODO: Completar este método.
+    #     # O tópico com a instance handle menor tem prioridade.
+    #     # Caso o serviço local tenha prioridade, é necessário informar os outros nodos.
+    #     pass
 
     def _append_data_object(self, new_data):
         handle = new_data.get_instance_handle()
         self.data_objects[handle] = new_data
-        if handle not in self.handles:
-            self.handles[handle] = new_data
         self._send_data_object_to_all_participants(new_data)
         self._attach_data_object_to_topic(new_data)
 
@@ -140,21 +137,22 @@ class PS_Service(entity.Entity):
         pass
 
     def _send_data_object_to_all_participants(self, data_object):
-        for participant in self.local_participants.values():
-            participant.update_all_subscribers(data_object)
+        topic_name = data_object.get_topic_name()
+        if self.topic_exists(topic_name):
+            for participant in self.local_participants.values():
+                participant.update_all_subscribers(data_object)
 
     def _attach_data_object_to_topic(self, data_object):
         topic_name = data_object.get_topic_name()
         if self.topic_exists(topic_name):
-            self.topics[topic_name].attach_data_object(data_object)
+            current_time = self.driver.get_time()
+            self.topics[topic_name].attach_data_object(data_object, current_time)
 
     def _send_full_domain_data(self, to_address):
         local_data = []
-        for participant in self.participants.values():
-            packet = ('NEW_PARTICIPANT', participant)
-            local_data.append(packet)
-        for topic in self.topics.values():
-            packet = ('NEW_TOPIC', topic)
+        for participant in self.local_participants.values():
+            local_ip = self.driver.address
+            packet = ('NEW_PARTICIPANT', (participant.get_instance_handle(), local_ip))
             local_data.append(packet)
         # No momento, não queremos enviar todos os dados para todos os nodos.
         #
@@ -163,7 +161,7 @@ class PS_Service(entity.Entity):
         #     local_data.append(packet)
         msg = ('ALL_DATA', local_data)
         self.driver.async_function_call(['send', to_address, msg])
-    
+
     def _receive_full_domain_data(self, r_data):
         for element in r_data:
             self._interpret_data(element)

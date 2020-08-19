@@ -15,13 +15,8 @@ class Topic(entity.Entity):
     def get_name(self):
         return self.name
 
-    def attach_data_object(self, data_object):
+    def attach_data_object(self, data_object, current_time):
         if data_object.get_topic_name() == self.name:
             handle = data_object.get_instance_handle()
             self.data_objects[handle] = data_object
             self.last_modified = self.participant.service.driver.get_time()
-
-    def can_be_deleted(self):
-        no_pubs = len(self.publishers) == 0
-        no_subs = len(self.subscribers) == 0
-        return no_pubs and no_subs

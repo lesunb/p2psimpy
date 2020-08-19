@@ -6,7 +6,7 @@ import driver
 import processor
 from simple_pubsub import *
 
-def publisher(peer, topic_name, count):
+def publisher(peer, topic_name, count, msg = None):
     environment = peer.driver.env
     yield environment.timeout(20) # Espera para que o driver esteja pronto
     service = pubsub_service.PS_Service(peer.driver)
@@ -14,7 +14,7 @@ def publisher(peer, topic_name, count):
     topic = node.create_topic(topic_name)
     pub = node.create_publisher(topic)
     for i in range(count):
-        pub.write(str(topic_name) + ": Message #" + str(i+1))
+        pub.write(str(topic_name) + ": Message #" + str(i+1) + ': ' + str(msg))
         yield environment.timeout(2)
 
 def subscriber(peer, topic_name):
@@ -59,7 +59,7 @@ proc_0 = processor.Processor(env, 0, 3)
 dri_0 = driver.Driver(net, proc_0)
 peer_0 = peer.Peer(dri_0, 0)
 env.process(dri_0.run())
-env.process(publisher(peer_0, topic_name, 100))
+env.process(publisher(peer_0, topic_name, 100, '1st pub'))
 
 # Setting up subscriber
 
@@ -76,5 +76,13 @@ dri_2 = driver.Driver(net, proc_2)
 peer_2 = peer.Peer(dri_2, 2)
 env.process(dri_2.run())
 env.process(publisher(peer_2, 'nosub', 100))
+
+# Setting up 2nd publisher to topic_name
+
+proc_3 = processor.Processor(env, 3, 3)
+dri_3 = driver.Driver(net, proc_3)
+peer_3 = peer.Peer(dri_3, 3)
+env.process(dri_3.run())
+env.process(publisher(peer_3, topic_name, 100, '2nd pub'))
 
 env.run(until=SIM_DURATION)
