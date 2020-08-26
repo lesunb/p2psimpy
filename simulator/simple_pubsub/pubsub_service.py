@@ -60,14 +60,14 @@ class PS_Service(entity.Entity):
         self.assign_handle(participant)
         handle = participant.get_instance_handle()
         self.local_participants[handle] = participant
-        local_ip = self.driver.address
-        self._send_local_modification('NEW_PARTICIPANT', (handle, local_ip))
+        local_address = self.driver.address
+        self._send_local_modification('NEW_PARTICIPANT', (handle, local_address))
 
     def add_topic(self, topic):
         self.assign_handle(topic)
         topic_key = topic.get_name()
         self.topics[topic_key] = topic
-        self._send_local_modification('NEW_TOPIC', topic)
+        #self._send_local_modification('NEW_TOPIC', topic)
 
     def add_data_object(self, data_object):
         self.assign_handle(data_object)
@@ -101,7 +101,8 @@ class PS_Service(entity.Entity):
         self.message_handlers['NEW_DATA'] = self._append_data_object
         self.message_handlers['SEND_ALL_DATA'] = self._send_full_domain_data
         self.message_handlers['ALL_DATA'] = self._receive_full_domain_data
-        self.message_handlers['NEW_SUBSCRIBER'] = self._notify_publishers_of_new_subscriber
+        self.message_handlers['NEW_SUBSCRIBER'] = self._acknowledge_new_remote_subscriber
+        self.message_handlers['CONFIRM_SUBSCRIBER'] = self.confirm_subscriber_existence
 
     # Espera uma 2-tupla de handle e IP.
     def _append_remote_participant(self, r_participant_info):
@@ -130,11 +131,44 @@ class PS_Service(entity.Entity):
         self._send_data_object_to_all_participants(new_data)
         self._attach_data_object_to_topic(new_data)
 
-    # TODO: Ainda falta completar.
-    def _notify_publishers_of_new_subscriber(self, new_subscriber):
-        for publisher in self.participants.publishers.values():
-            topic_name = new_subscriber.get_topic().get_name()
-        pass
+    def notify_remote_participants_of_new_subscriber(self, subscriber):
+        topic_name = subscriber.get_topic().get_name()
+        local_address = self.driver.address
+        handle = subscriber.get_instance_handle()
+        subscriber_info = (topic_name, handle, local_address)
+        msg = ('NEW_SUBSCRIBER', subscriber_info)
+        self._send_to_all_peers(msg)
+
+    def _acknowledge_new_remote_subscriber(self, new_subscriber_info):
+        topic_name = new_subscriber_info[0]
+        handle = new_subscriber_info[1]
+        address = new_subscriber_info[2]
+        if self.topic_exists(topic_name):
+            self.topics[topic_name].attach_remote_subscriber(topic_name, handle, address)
+
+    def assert_remote_subscriber_liveliness(self, topic_name, sub_dictionary):
+        local_address = self.driver.address
+        for handle, to_address in sub_dictionary.items():
+            info = (topic_name, handle, local_address)
+            msg = ('CONFIRM_SUBSCRIBER', info)
+            self.driver.async_function_call(['send', to_address, msg])
+
+    def confirm_subscriber_existence(self, subscriber_info):
+        topic_name = subscriber_info[0]
+        sub_handle = subscriber_info[1]
+        remote_address = subscriber_info[2]
+        for participant in self.local_participants.values():
+            if sub_handle in participant.subscribers:
+                subscriber = participant.subscribers[sub_handle]
+                self.confirm_subscription_to_remote_participant(subscriber, remote_address)
+
+    def confirm_subscription_to_remote_participant(self, subscriber, to_address):
+        topic_name = subscriber.get_topic().get_name()
+        local_address = self.driver.address
+        handle = subscriber.get_instance_handle()
+        subscriber_info = (topic_name, handle, local_address)
+        msg = ('NEW_SUBSCRIBER', subscriber_info)
+        self.driver.async_function_call(['send', to_address, msg])
 
     def _send_data_object_to_all_participants(self, data_object):
         topic_name = data_object.get_topic_name()
@@ -151,8 +185,8 @@ class PS_Service(entity.Entity):
     def _send_full_domain_data(self, to_address):
         local_data = []
         for participant in self.local_participants.values():
-            local_ip = self.driver.address
-            packet = ('NEW_PARTICIPANT', (participant.get_instance_handle(), local_ip))
+            local_address = self.driver.address
+            packet = ('NEW_PARTICIPANT', (participant.get_instance_handle(), local_address))
             local_data.append(packet)
         # No momento, não queremos enviar todos os dados para todos os nodos.
         #
@@ -183,9 +217,9 @@ class PS_Service(entity.Entity):
             self.message_handlers[data[0]](data[1])
 
     def _attach_msg_reception_handler_to_driver(self):
-        self.driver.register_handler(self._receive_incoming_data, 'on_message')
+        self.driver.register_handler(self.receive_incoming_data, 'on_message')
 
-    def _receive_incoming_data(self, msg):
+    def receive_incoming_data(self, msg):
         logging.info(str(self.driver.get_time()) + ' :: ' + f'Data received by PS Service, handle {str(self.instance_handle)}')
         for z in self._unpack_data(msg):
             yield z

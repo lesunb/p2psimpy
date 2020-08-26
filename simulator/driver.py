@@ -84,6 +84,10 @@ class Driver:
     def get_time(self):
         return self.env.now
 
+    def generate_timeout(self, time, boolean):
+        yield self.driver.env.timeout(time)
+        boolean = True
+
     # Coloca uma função na lista de processamento, que será executada
     # em ordem.
     def async_function_call(self, call_info):
@@ -103,4 +107,9 @@ class Driver:
             elif function_name == 'advertise':
                 msg = function_call[1]
                 for z in self.advertise(msg):
+                    yield z
+            elif function_name == 'generate_timeout':
+                time = function_call[1]
+                boolean = function_call[2]
+                for z in self.generate_timeout(time, boolean):
                     yield z

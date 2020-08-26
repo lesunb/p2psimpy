@@ -24,7 +24,7 @@ def subscriber_number():
     # Set Number:
     return 15
 
-class MsgStoringApp:
+class MsgReceptionTestApp:
 
     def __init__(self, peer):
         self.peer = peer
@@ -33,6 +33,15 @@ class MsgStoringApp:
     # Store message
     def callback(self, subscriber):
         self.latest_read_msg = subscriber.read()
+
+class SubscriptionCountTestApp:
+    
+    def __init__(self, peer, publisher = None):
+        self.peer = peer
+        self.publisher = publisher
+
+    def subscription_count(self):
+        return self.publisher.get_subscriber_count()
 
 def test_simple_publication_two_peers(environment_and_network):
     env, net = environment_and_network
@@ -47,7 +56,7 @@ def test_simple_publication_two_peers(environment_and_network):
 
     publishing_peer = initialize_peer(env, net, 0, 0, proc_latency)
     subscribing_peer = initialize_peer(env, net, 1, 1, proc_latency)
-    app = MsgStoringApp(subscribing_peer)
+    app = MsgReceptionTestApp(subscribing_peer)
     publication = wait_then_publish_message(publishing_peer, topic_name, message, wait_before_publication)
     reading = set_up_subscription(app, topic_name, wait_before_subscription)
     add_process_to_simulation(env, publication)
@@ -76,7 +85,7 @@ def test_simple_publication_to_multiple_peers(environment_and_network, subscribe
     add_process_to_simulation(env, publication)
     for i in range(subscriber_number):
         subscribing_peer = initialize_peer(env, net, 0, i, proc_latency)
-        sub_app = MsgStoringApp(subscribing_peer)
+        sub_app = MsgReceptionTestApp(subscribing_peer)
         reading = set_up_subscription(sub_app, topic_name, wait_before_subscription)
         add_process_to_simulation(env, reading)
         subscribers.append(sub_app)
@@ -86,6 +95,34 @@ def test_simple_publication_to_multiple_peers(environment_and_network, subscribe
         print(i)
         received_msg = str(subscriber.latest_read_msg)
         assert received_msg == str(message)
+
+def test_get_subscription_count(environment_and_network, subscriber_number):
+    env, net = environment_and_network
+    proc_latency = 3
+    random.seed()
+    message = 'test message'
+    topic_name = 'test topic'
+    wait_before_publication = 500
+    wait_before_subscription = 50
+    simulation_time = 3000
+    subscriber_id = 1
+    subscribers = []
+    received_msg = None
+
+    publishing_peer = initialize_peer(env, net, 0, 0, proc_latency)
+    publisher_app = SubscriptionCountTestApp(publishing_peer)
+    publication = set_up_publisher(publisher_app, topic_name, message, wait_before_publication)
+    add_process_to_simulation(env, publication)
+    for i in range(subscriber_number):
+        subscribing_peer = initialize_peer(env, net, 0, i, proc_latency)
+        sub_app = MsgReceptionTestApp(subscribing_peer)
+        reading = set_up_subscription(sub_app, topic_name, wait_before_subscription)
+        add_process_to_simulation(env, reading)
+        subscribers.append(sub_app)
+
+    env.run(until=simulation_time)
+    sub_count = publisher_app.subscription_count()
+    assert sub_count == subscriber_number
 
 # TODO: Adicionar teste mostrando que subscribers não recebem mensagens de tópicos que não
 # sejam os seus.
@@ -126,6 +163,15 @@ def wait_then_publish_message_multiple_times(peer, topic_name, message, wait_tim
     for i in range(count):
         pub.write(message)
         yield peer.driver.env.timeout(1)
+
+def set_up_publisher(application, topic_name, message, wait_time=100):
+    yield application.peer.driver.env.timeout(wait_time)
+    the_service = pubsub_service.PS_Service(application.peer.driver)
+    participant = domain_participant.Domain_Participant(the_service)
+    topic = participant.create_topic(topic_name)
+    pub = participant.create_publisher(topic)
+    application.publisher = pub
+    pub.write(message)
 
 def wait_then_read_message(peer, topic_name, message, wait_time=100):
     yield peer.driver.env.timeout(wait_time)

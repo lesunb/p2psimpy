@@ -15,3 +15,6 @@ class Publisher(entity.Entity):
     def write(self, data):
         new_data = data_object.Data_Object(self, self.topic, data)
         self.participant.service.add_data_object(new_data)
+
+    def get_subscriber_count(self):
+        return self.topic.get_subscription_count()

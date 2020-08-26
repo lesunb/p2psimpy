@@ -28,7 +28,20 @@ def subscriber(peer, topic_name):
 
 def sub_callback(subscriber):
     msg = subscriber.read()
-    print("Received: " + str(msg))
+    #print("Received: " + str(msg))
+
+def subscriber2(peer, topic_name):
+    environment = peer.driver.env
+    yield environment.timeout(100)
+    service = pubsub_service.PS_Service(peer.driver)
+    node = domain_participant.Domain_Participant(service)
+    topic = node.create_topic(topic_name)
+    sub = node.create_subscriber(topic, sub_callback2)
+    yield environment.timeout(0)
+
+def sub_callback2(subscriber):
+    msg = subscriber.read()
+    #print("Received: " + str(msg))
 
 # Configuração do root logger
 console_handler = logging.StreamHandler()
@@ -40,7 +53,7 @@ logging.basicConfig(level = logging.INFO,
 )
 
 NUM_PEERS = 2
-SIM_DURATION = 2000
+SIM_DURATION = 5000
 
 # create env
 env = simpy.Environment()
@@ -84,5 +97,13 @@ dri_3 = driver.Driver(net, proc_3)
 peer_3 = peer.Peer(dri_3, 3)
 env.process(dri_3.run())
 env.process(publisher(peer_3, topic_name, 100, '2nd pub'))
+
+# Setting up 2nd subscriber
+
+proc_4 = processor.Processor(env, 4, 3)
+dri_4 = driver.Driver(net, proc_4)
+peer_4 = peer.Peer(dri_4, 4)
+env.process(dri_4.run())
+env.process(subscriber2(peer_4, topic_name))
 
 env.run(until=SIM_DURATION)
