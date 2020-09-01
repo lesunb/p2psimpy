@@ -52,6 +52,9 @@ class Driver:
     def disconnect(self):
         self.address = None
 
+    def is_connected(self):
+        return self.address is not None
+
     def advertise(self, msg):
         for z in self.network.send_broadcast(self.address, msg):
             yield z
@@ -84,10 +87,6 @@ class Driver:
     def get_time(self):
         return self.env.now
 
-    def generate_timeout(self, time, boolean):
-        yield self.driver.env.timeout(time)
-        boolean = True
-
     # Coloca uma função na lista de processamento, que será executada
     # em ordem.
     def async_function_call(self, call_info):
@@ -102,14 +101,7 @@ class Driver:
             if function_name == 'send':
                 to_addr = function_call[1]
                 msg = function_call[2]
-                for z in self.send(to_addr, msg):
-                    yield z
+                self.env.process(self.send(to_addr, msg))
             elif function_name == 'advertise':
                 msg = function_call[1]
-                for z in self.advertise(msg):
-                    yield z
-            elif function_name == 'generate_timeout':
-                time = function_call[1]
-                boolean = function_call[2]
-                for z in self.generate_timeout(time, boolean):
-                    yield z
+                self.env.process(self.advertise(msg))

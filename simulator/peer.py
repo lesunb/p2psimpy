@@ -18,6 +18,7 @@ Resources e uma lista de recursos com a sua qualidade
 
 class Peer:
     def __init__(self, driver, id):
+        self.id = id
         self.driver = driver
         self.driver.register_handler(self.on_message)
         self.driver.register_handler(self.on_connect, 'on_connect')

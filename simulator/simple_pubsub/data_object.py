@@ -14,3 +14,6 @@ class Data_Object(entity.Entity):
 
     def get_topic_name(self):
         return self.topic.get_name()
+
+    def get_raw_data(self):
+        return self.content
