@@ -6,6 +6,15 @@ import driver
 import processor
 from simple_pubsub import *
 
+# Configuração do root logger
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+handlers = [console_handler]
+logging.basicConfig(level = logging.INFO,
+                    format = '[%(levelname)s] [%(module)15s] %(message)s',
+                    handlers = handlers
+)
+
 class PublisherForLatencyTest:
 
     def __init__(self, peer, topic_name, count, delay):
@@ -69,6 +78,32 @@ class SubscriberForLatencyTest:
             self.latency_list[publisher_id] = {}
         self.latency_list[publisher_id][msg_num] = latency
 
+class FileWriterForLatencyTest:
+
+    def __init__(self, subscriber_list, publisher_count, msg_count):
+        from datetime import datetime
+        self.current_time = str(datetime.now()).replace(':', '_')
+        self.filename = 'latency_test_' + self.current_time + '.txt'
+        self.subscriber_list = subscriber_list
+        self.publisher_count = publisher_count
+        self.msg_count = msg_count
+
+    def write(self):
+        with open(self.filename, 'a') as f:
+            f.write('--- Latency Test Report - ' + self.current_time + '\n\n')
+            f.write('Publishers: ' + str(self.publisher_count) + '\n')
+            f.write('Subscribers: ' + str(len(self.subscriber_list)) + '\n')
+            f.write('Messages per Publisher: ' + str(self.msg_count) + '\n\n')
+
+            for i, subscriber in enumerate(self.subscriber_list):
+                f.write('> Subscriber #' + str(i) + '\n')
+                for peer_id, msg_dict in subscriber.latency_list.items():
+                    f.write('   > Messages from Peer #' + peer_id + ' :\n')
+                    for msg_num, latency in msg_dict.items():
+                        f.write('       #' + msg_num + ': ' + str(latency) + '\n')
+                f.write('\n')
+            f.write('\n')
+
 class LatencyTest:
 
     def __init__(self, publisher_number, subscriber_number, network_latency, processor_latency, max_peers, sim_duration):
@@ -81,7 +116,7 @@ class LatencyTest:
         self.duration = sim_duration
         self.node_count = 0
         self.topic_name = "latency_test"
-        self.msg_quantity = 1
+        self.msg_quantity = 2
         self.publishers = []
         self.subscribers = []
         self.setup_publishers(publisher_number)
@@ -114,19 +149,12 @@ class LatencyTest:
     def run(self):
         self.env.run(until=self.duration)
         print(self.subscribers[0].latency_list['0']['0'])
+        fwriter = FileWriterForLatencyTest(self.subscribers, len(self.publishers), self.msg_quantity)
+        fwriter.write()
 
-
-# Configuração do root logger
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-handlers = [console_handler]
-logging.basicConfig(level = logging.INFO,
-                    format = '[%(levelname)s] [%(module)15s] %(message)s',
-                    handlers = handlers
-)
 
 num_pub = 5
-num_sub = 1
+num_sub = 10
 max_peers = num_pub + num_sub
 net_latency = 2
 proc_latency = 3
