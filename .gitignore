@@ -133,3 +133,7 @@ Pipfile.lock
 .vscode/
 .gitignore
 .vscode/settings.json
+
+# Logs from simulator program
+simulator/logs/
+

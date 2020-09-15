@@ -37,7 +37,7 @@ class PS_Service(entity.Entity):
         self._add_message_handler_methods()
         self._attach_msg_reception_handler_to_driver()
         self._discover_peers()
-        self._request_full_domain_data()
+        #self._request_full_domain_data()
 
     def set_instance_handle(self, handle):
         raise RuntimeError("PS Service's handle cannot be changed.")

@@ -64,19 +64,17 @@ class Network:
     def send_broadcast(self, from_addr, msg):
         self.confirm_peer(from_addr)
         logging.info(str(self.env.now) + ' :: ' + 'Message Broadcast from {} - {}'.format(from_addr, str(msg)))
-        with self.node_list_access.request(priority=0) as nl_access:
-            yield nl_access
-            for addr in range(len(self.node_list)):
-                to_addr = self.node_list[addr]['address']
-                if to_addr == from_addr:
-                    continue
-                msg_envelope = [from_addr, to_addr, msg]
-                with self.channel.request() as rec:
-                    yield rec
-                    node = self.node_list[addr]['node']
-                    node.receive(msg_envelope)
-                    yield self.env.timeout(self.latency)
-                    #logging.info(str(self.env.now) + ' :: ' + 'Broadcast:'+ str(msg_envelope))
+        for addr in range(len(self.node_list)):
+            to_addr = self.node_list[addr]['address']
+            if to_addr == from_addr:
+                continue
+            msg_envelope = [from_addr, to_addr, msg]
+            with self.channel.request() as rec:
+                yield rec
+                node = self.node_list[addr]['node']
+                node.receive(msg_envelope)
+                yield self.env.timeout(self.latency)
+                #logging.info(str(self.env.now) + ' :: ' + 'Broadcast:'+ str(msg_envelope))
 
     def find_next_available(self):
         addr = (self.next_available_address + 1) % self.max_hosts

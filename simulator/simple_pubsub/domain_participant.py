@@ -46,7 +46,7 @@ class Domain_Participant(entity.Entity):
         self.service.assign_handle(new_subscriber)
         handle = new_subscriber.get_instance_handle()
         self.subscribers[handle] = new_subscriber
-        self.service.notify_remote_participants_of_new_subscriber(new_subscriber)
+        #self.service.notify_remote_participants_of_new_subscriber(new_subscriber)
         topic.attach_local_subscriber(topic.get_name(), new_subscriber)
         return new_subscriber
 
