@@ -22,7 +22,7 @@ def environment_and_network():
 @pytest.fixture
 def subscriber_number():
     # Set Number:
-    return 15
+    return 200
 
 class MsgReceptionTestApp:
 
@@ -75,7 +75,7 @@ def test_simple_publication_to_multiple_peers(environment_and_network, subscribe
     topic_name = 'test topic'
     wait_before_publication = 500
     wait_before_subscription = 50
-    simulation_time = 3000
+    simulation_time = 100000
     subscriber_id = 1
     subscribers = []
     received_msg = None
